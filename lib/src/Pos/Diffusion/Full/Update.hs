@@ -85,7 +85,9 @@ sendUpdateProposal enqueue upid proposal votes = do
         (proposal, votes)
 
 updateListeners
-    :: ( DiffusionWorkMode m )
+    :: ( DiffusionWorkMode m
+       , HasUpdateLimits m
+       )
     => Logic m
     -> OQ.OutboundQ pack NodeId Bucket
     -> EnqueueMsg m
@@ -95,7 +97,9 @@ updateListeners logic oq enqueue = relayListeners oq enqueue (usRelays logic)
 -- | Relays for data related to update system
 usRelays
     :: forall m .
-       ( DiffusionWorkMode m )
+       ( DiffusionWorkMode m
+       , HasUpdateLimits m
+       )
     => Logic m
     -> [Relay m]
 usRelays logic = [proposalRelay logic, voteRelay logic]
@@ -105,7 +109,9 @@ usRelays logic = [proposalRelay logic, voteRelay logic]
 ----------------------------------------------------------------------------
 
 proposalRelay
-    :: ( DiffusionWorkMode m )
+    :: ( DiffusionWorkMode m
+       , HasUpdateLimits m
+       )
     => Logic m
     -> Relay m
 proposalRelay logic =

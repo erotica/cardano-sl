@@ -54,7 +54,9 @@ sendTx enqueue txAux = do
         ]
 
 txListeners
-    :: DiffusionWorkMode m
+    :: ( DiffusionWorkMode m
+       , HasTxpLimits m
+       )
     => Logic m
     -> OQ.OutboundQ pack NodeId Bucket
     -> EnqueueMsg m
@@ -75,7 +77,9 @@ txInvReqDataParams logic =
        }
 
 txRelays
-    :: DiffusionWorkMode m
+    :: ( DiffusionWorkMode m
+       , HasTxpLimits m
+       )
     => Logic m
     -> [Relay m]
 txRelays logic = pure $
