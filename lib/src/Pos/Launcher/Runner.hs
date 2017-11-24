@@ -26,7 +26,7 @@ import           Data.Default (Default)
 import qualified Data.Map as M
 import           Formatting (build, sformat, (%))
 import           Mockable (Mockable, MonadMockable, Production (..), Throw, async, bracket, cancel,
-                           killThread, throw, Concurrently, concurrently)
+                           killThread, throw)
 import qualified Network.Broadcast.OutboundQueue as OQ
 import           Node (Node, NodeAction (..), NodeEndPoint, ReceiveDelay, Statistics,
                        defaultNodeEnvironment, noReceiveDelay, node, nodeAckTimeout,
@@ -55,8 +55,8 @@ import           Pos.Crypto.Configuration (ProtocolMagic (..))
 import           Pos.Launcher.Configuration (HasConfigurations)
 import           Pos.Launcher.Param (BaseParams (..), LoggingParams (..), NodeParams (..))
 import           Pos.Launcher.Resource (NodeResources (..), hoistNodeResources)
-import           Pos.Diffusion.Types (DiffusionLayer (runDiffusionLayer))
-import           Pos.Logic.Types (LogicLayer (runLogicLayer))
+import           Pos.Diffusion.Types (DiffusionLayer (..), Diffusion)
+import           Pos.Logic.Types (LogicLayer (..), Logic)
 import           Pos.Network.Types (NetworkConfig (..), NodeId, initQueue,
                                     topologyRoute53HealthCheckEnabled)
 import           Pos.Recovery.Instance ()
@@ -76,11 +76,14 @@ import           Pos.WorkMode (EnqueuedConversation (..), OQ, RealMode, RealMode
 -- to get the obligations necessary to create the layers (i.e. to come up with
 -- the contiuation-style function).
 cslMain
-    :: ( Mockable Concurrently m )
-    => (forall x . ((LogicLayer m, DiffusionLayer m) -> m x) -> m x)
-    -> m ()
-cslMain layers = layers $ \(logicLayer, diffusionLayer) ->
-    void $ concurrently (runLogicLayer logicLayer) (runDiffusionLayer diffusionLayer)
+    :: ( )
+    => (forall x . ((DiffusionLayer m, LogicLayer m) -> m x) -> m x)
+    -> (Diffusion m -> Logic m -> m t)
+    -> m t
+cslMain withLayers control = withLayers $ \(diffusionLayer, logicLayer) ->
+    runDiffusionLayer diffusionLayer $
+        runLogicLayer logicLayer $
+            control (diffusion diffusionLayer) (logic logicLayer)
 
 ----------------------------------------------------------------------------
 -- High level runners
