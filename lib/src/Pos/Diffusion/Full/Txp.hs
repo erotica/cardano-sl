@@ -12,7 +12,6 @@ import qualified Network.Broadcast.OutboundQueue as OQ
 
 import           Pos.Binary.Communication ()
 import           Pos.Binary.Core ()
-import           Pos.Binary.Relay ()
 import           Pos.Binary.Txp ()
 import           Pos.Communication.Message ()
 import           Pos.Communication.Limits (HasTxpLimits)

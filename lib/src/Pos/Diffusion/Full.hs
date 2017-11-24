@@ -37,9 +37,10 @@ import           Pos.Configuration (HasNodeConfiguration, conversationEstablishT
 import           Pos.Core.Block (Block, MainBlockHeader, BlockHeader)
 import           Pos.Core.Coin (coinPortionToDouble)
 import           Pos.Core.Configuration (protocolMagic)
-import           Pos.Core.Types (ProtocolMagic (..), HeaderHash, BlockVersionData (..), StakeholderId)
+import           Pos.Core.Types (HeaderHash, BlockVersionData (..), StakeholderId)
 import           Pos.Core.Txp (TxAux)
 import           Pos.Core.Update (UpId, UpdateVote, UpdateProposal)
+import           Pos.Crypto.Configuration (ProtocolMagic (..))
 import           Pos.DHT.Real (KademliaDHTInstance, KademliaParams (..), startDHTInstance, stopDHTInstance)
 import qualified Pos.Diffusion.Full.Block      as Diffusion.Block
 import qualified Pos.Diffusion.Full.Delegation as Diffusion.Delegation
