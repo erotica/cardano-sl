@@ -16,20 +16,21 @@ import           Formatting (Format, bprint, build, fixed, int, now, sformat, sh
 import           Mockable (delay, fork)
 import           Serokell.Util (listJson, pairF, sec)
 import qualified System.Metrics.Label as Label
-import           System.Wlog (logDebug, logInfo, logWarning)
+import           System.Wlog (logDebug, logInfo, logNotice, logWarning)
 
 import           Pos.Binary.Communication ()
 import           Pos.Block.Logic (calcChainQualityFixedTime, calcChainQualityM,
                                   calcOverallChainQuality, createGenesisBlockAndApply,
-                                  createMainBlockAndApply)
+                                  createMainBlockAndApply, needRecovery)
 import           Pos.Block.Network.Announce (announceBlock, announceBlockOuts)
+import           Pos.Block.Network.Logic (requestTipOuts, triggerRecovery)
 import           Pos.Block.Network.Retrieval (retrievalWorker)
 import           Pos.Block.Slog (scCQFixedMonitorState, scCQOverallMonitorState, scCQkMonitorState,
                                  scCrucialValuesLabel, scDifficultyMonitorState,
                                  scEpochMonitorState, scGlobalSlotMonitorState,
                                  scLocalSlotMonitorState, slogGetLastSlots)
 import           Pos.Communication.Protocol (OutSpecs, SendActions (..), Worker, WorkerSpec,
-                                             onNewSlotWorker)
+                                             onNewSlotWorker, worker)
 import           Pos.Configuration (networkDiameter)
 import           Pos.Context (getOurPublicKey, recoveryCommGuard)
 import           Pos.Core (BlockVersionData (..), ChainDifficulty, FlatSlotId, SlotId (..),
@@ -48,7 +49,8 @@ import           Pos.GState (getAdoptedBVData, getPskByIssuer)
 import qualified Pos.Lrc.DB as LrcDB (getLeadersForEpoch)
 import           Pos.Reporting (MetricMonitor (..), MetricMonitorState, noReportMonitor,
                                 recordValue, reportOrLogE)
-import           Pos.Slotting (currentTimeSlotting, getSlotStartEmpatically)
+import           Pos.Slotting (currentTimeSlotting, getNextEpochSlotDuration,
+                               getSlotStartEmpatically)
 import           Pos.Util (mconcatPair)
 import           Pos.Util.Chrono (OldestFirst (..))
 import           Pos.Util.JsonLog (jlCreatedBlock)
@@ -71,6 +73,7 @@ blkWorkers keepAliveTimer =
     merge $ [ blkCreatorWorker
             , blkMetricCheckerWorker
             , retrievalWorker keepAliveTimer
+            , recoveryTriggerWorker
             ]
   where
     merge = mconcatPair . map (first pure)
@@ -196,6 +199,34 @@ onNewSlotWhenLeader slotId pske SendActions {..} = do
             jsonLog $ jlCreatedBlock (Right createdBlk)
             void $ announceBlock enqueueMsg $ createdBlk ^. gbHeader
     whenNotCreated = logWarningS . (mappend "I couldn't create a new block: ")
+
+----------------------------------------------------------------------------
+-- Recovery trigger worker
+----------------------------------------------------------------------------
+
+recoveryTriggerWorker ::
+       forall ctx m. (WorkMode ctx m)
+    => (WorkerSpec m, OutSpecs)
+recoveryTriggerWorker =
+    worker requestTipOuts recoveryTriggerWorkerImpl
+
+recoveryTriggerWorkerImpl
+    :: forall ctx m.
+       (WorkMode ctx m)
+    => SendActions m -> m ()
+recoveryTriggerWorkerImpl SendActions{..} = afterDelay $
+    repeatOnInterval (const $ sec 4) $ do
+         logNotice "receivedBlocksWorker 1"
+         recoveryCommGuard "security worker" $
+            whenM (needRecovery @ctx) $ triggerRecovery enqueueMsg
+  where
+    -- delay is needed for the system to initialize
+    afterDelay action = delay (sec 3) >> action
+    repeatOnInterval delF action = () <$ do
+        -- REPORT:ERROR 'reportOrLogE' in recovery trigger worker
+        () <$ action `catchAny` \e -> reportOrLogE "Security worker" e
+        getNextEpochSlotDuration >>= delay . delF
+        repeatOnInterval delF action
 
 ----------------------------------------------------------------------------
 -- Metric worker
