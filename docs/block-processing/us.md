@@ -10,6 +10,7 @@
     + [Update proposal states](#update-proposal-states)
     + [Software and block versions](#software-and-block-versions)
     + [Adoption of block version](#adoption-of-block-version)
+      - [Competing block version](#competing-block-version)
       - [Block validation according to adopted version](#block-validation-according-to-adopted-version)
       - [Example](#example)
  * [Verification](#verification)
@@ -163,8 +164,10 @@ less than some reasonable minimal value (`spMinThd`).
 So we check this rule at the beginning of each epoch for each _confirmed_ proposal 
 and adopt one of block version from _confirmed_ proposals if this version satisfies the rule.
 
-By the way, we call block version **competing** if it may become adopted. 
-It implies there is at least one confirmed proposal with such block version.  
+
+#### Competing block version
+Block version is called **competing** if it may become adopted and 
+there is a confirmed proposal with this block version.
 There are rules defining whether block version may become adopted after current last adopted version.  
 The following rules regarding major and minor versions take place:
   * The proposed major version must be equal to or greater by `1` last adopted one.
@@ -277,7 +280,8 @@ So everyone can send update proposal to network, but it can get into block only 
 
 #### Protocol version checks
 
-* _Protocol version following check_: protocol version from proposal can follow last adopted protocol version.  
+* _Protocol version following check_: 
+proposed block version must adhere to the rules described [above](#competing-block-version).
 
 * _BlockVersionModifier consistenty check_: `BlockVersionModifier` from proposal is consistent 
 with `BlockVersionData` for adopted protocol version or 
